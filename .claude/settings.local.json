@@ -6,7 +6,16 @@
       "Skill(skill-creator)",
       "Bash(python:*)",
       "Bash(PYTHONIOENCODING=utf-8 python:*)",
-      "Bash(export PYTHONIOENCODING=utf-8)"
+      "Bash(export PYTHONIOENCODING=utf-8)",
+      "Skill(fastapi)",
+      "Bash(fastapi dev:*)",
+      "Bash(curl:*)",
+      "Bash(uv --version:*)",
+      "Bash(uv init:*)",
+      "Bash(uv add:*)",
+      "Bash(uv run:*)",
+      "Bash(cat:*)",
+      "Bash(tree:*)"
     ]
   }
 }

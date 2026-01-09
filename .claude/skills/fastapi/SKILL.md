@@ -1,17 +1,138 @@
 ---
 name: fastapi
-description: Comprehensive FastAPI development skill for building Python web APIs from simple hello world to production-ready applications. Use when building REST APIs, creating web services, implementing backends, or when the user mentions FastAPI, Python APIs, async Python web frameworks, or needs to build endpoints with automatic documentation, data validation, and type hints.
+description: Comprehensive FastAPI development skill for building Python web APIs. CRITICAL - ALWAYS use uv package manager (uv init + uv add "fastapi[standard]") to create projects. Generate code with mandatory type hints on all parameters, descriptive function names matching endpoint purpose, and dictionary returns only (never None). Use when building REST APIs, creating web services, implementing backends, or when the user mentions FastAPI.
 ---
 
 # FastAPI Development Skill
 
 Build FastAPI applications from hello world to production-ready APIs using official documentation patterns.
 
+## ⚠️ MANDATORY WORKFLOW - READ THIS FIRST
+
+**CRITICAL: Every FastAPI project MUST follow this exact sequence. DO NOT skip steps!**
+
+### Step-by-Step Project Creation:
+
+1. **Initialize project with uv:**
+   ```bash
+   uv init <project-name>
+   cd <project-name>
+   ```
+
+2. **Install FastAPI with all standard dependencies:**
+   ```bash
+   uv add "fastapi[standard]"
+   ```
+   This installs: FastAPI, uvicorn, pydantic, httpx, email-validator, and more.
+
+3. **Create main.py with code that follows ALL principles:**
+   - ✅ Type hints on ALL path and query parameters
+   - ✅ Return dictionaries, NEVER None
+   - ✅ Use descriptive function names (e.g., `get_user`, `search_items`)
+
+4. **Run the application:**
+   ```bash
+   uv run uvicorn main:app --reload
+   # OR
+   uv run fastapi dev main.py
+   ```
+
+### ❌ NEVER Do This:
+- Create `.py` files outside a uv project
+- Use system Python or pip
+- Skip `uv init` or `uv add "fastapi[standard]"`
+- Create functions without type hints
+- Return `None` from endpoints
+- Use generic names like `handler()`, `endpoint()`, or `root()`
+
+### ✅ Validation Checklist:
+Before completing ANY FastAPI task, verify:
+- [ ] Project created with `uv init`
+- [ ] `pyproject.toml` exists with `fastapi[standard]` dependency
+- [ ] `uv.lock` file exists (confirms reproducible builds)
+- [ ] `.venv` directory exists (virtual environment)
+- [ ] All function parameters have type hints
+- [ ] All endpoints return dictionaries (not None)
+- [ ] Function names are descriptive and purpose-driven
+- [ ] Application runs with `uv run`
+
+### 📝 Complete Example Following All Principles:
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# ✅ CORRECT - Type hints, descriptive name, returns dictionary
+@app.get("/")
+async def get_welcome_message():
+    return {"message": "Welcome to my API!", "status": "operational"}
+
+# ✅ CORRECT - Path parameter with type hint
+@app.get("/users/{user_id}")
+async def get_user_by_id(user_id: int):
+    return {"user_id": user_id, "name": f"User {user_id}"}
+
+# ✅ CORRECT - Query parameters with type hints and defaults
+@app.get("/search")
+async def search_items(
+    q: str,                    # Required parameter
+    limit: int = 10,           # Optional with default
+    category: str | None = None # Nullable parameter
+):
+    return {
+        "query": q,
+        "limit": limit,
+        "category": category,
+        "results": []
+    }
+
+# ❌ WRONG - Missing type hints
+@app.get("/wrong")
+async def handler(id, name=None):  # DON'T DO THIS!
+    return None  # DON'T RETURN NONE!
+```
+
+---
+
 ## Quick Start
 
-### Create New Project
+### Create New Project with uv
 
-Use the project scaffolding script:
+Always use [uv](https://docs.astral.sh/uv/) package manager for FastAPI projects:
+
+```bash
+# Initialize a new Python project
+uv init my-api
+cd my-api
+
+# Create virtual environment and install FastAPI with all standard dependencies
+uv add "fastapi[standard]"
+
+# Create main.py
+cat > main.py << 'EOF'
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+async def read_root():
+    return {"message": "Hello World"}
+EOF
+
+# Run development server
+fastapi dev main.py
+```
+
+**Why uv?**
+- Extremely fast package installation (10-100x faster than pip)
+- Built-in virtual environment management
+- Reproducible builds with `uv.lock`
+- Drop-in replacement for pip, pip-tools, and virtualenv
+
+### Alternative: Use Project Scaffolding Script
+
+For complex projects with custom structure:
 
 ```bash
 # Basic project
@@ -70,6 +191,37 @@ Basic HTTP methods and routing:
 @app.delete("/items/{id}")    # Delete item
 ```
 
+#### Why CRUD Is the Foundation
+
+CRUD (Create, Read, Update, Delete) is the foundation of data-driven APIs. This matters for agents because every agent that manages state needs CRUD operations:
+
+- **Memory agents** create memories, read relevant ones, update importance scores, delete stale entries
+- **Task agents** create tasks, read pending work, update status, delete completed items
+- **Session agents** create conversations, read context, update metadata, delete expired sessions
+
+Every one of these is CRUD. Master these four operations, and you can build the data layer for any agent.
+
+#### HTTP Methods and CRUD
+
+Each CRUD operation maps to an HTTP method with specific semantics:
+
+| Operation  | HTTP Method | Endpoint Example | Description           |
+| ---------- | ----------- | ---------------- | --------------------- |
+| Create     | POST        | POST /tasks      | Create a new task     |
+| Read (all) | GET         | GET /tasks       | List all tasks        |
+| Read (one) | GET         | GET /tasks/1     | Get task with ID 1    |
+| Update     | PUT         | PUT /tasks/1     | Update task with ID 1 |
+| Delete     | DELETE      | DELETE /tasks/1  | Delete task with ID 1 |
+
+**Why these specific mappings?** HTTP methods have semantics:
+
+* **GET** is _safe_—it doesn't change server state. Browsers can cache GET responses.
+* **POST** creates new resources. Not safe, not idempotent.
+* **PUT** replaces a resource. Idempotent—calling it twice has the same effect as once.
+* **DELETE** removes a resource. Also idempotent.
+
+These semantics matter for agents. If an agent's HTTP call fails partway through, idempotent operations (PUT, DELETE) can be safely retried. Non-idempotent operations (POST) require more careful handling.
+
 **See [references/path-operations.md](references/path-operations.md) for:**
 - Path parameters with type hints
 - Query parameters (required, optional, default values)
@@ -78,20 +230,61 @@ Basic HTTP methods and routing:
 - Data validation
 - Multiple parameter types
 
+**See [references/crud-operations.md](references/crud-operations.md) for:**
+- Complete CRUD operations guide
+- HTTP method semantics (GET is safe, PUT/DELETE are idempotent)
+- Filtering list endpoints
+- Update patterns (PUT vs PATCH)
+- Error handling (404 for not found)
+- Complete Task API implementation
+- Common mistakes and best practices
+
 ### Request/Response Handling
+
+#### Why Pydantic Matters for Agents
+
+When building APIs that agents call, Pydantic validation is critical:
+
+- **Agents can't guess** - They call exactly what your API exposes
+- **Errors cascade** - Bad data gets rejected at the door, not halfway through an expensive LLM call
+- **Type safety at boundaries** - When agents compose tools, one agent's output becomes another's input. Type safety prevents cascading failures
+- **Automatic validation** - FastAPI uses Pydantic to parse raw JSON bytes, validate data types, check required fields, and reject invalid data with helpful error messages
+
+This validation layer is critical when agents compose tools, similar to how MCP servers validate tool parameters (Chapter 37).
+
+#### Request and Response Models
 
 ```python
 from pydantic import BaseModel
 
-class Item(BaseModel):
-    name: str
-    price: float
+# Request model - what client sends
+class TaskCreate(BaseModel):
+    title: str
     description: str | None = None
 
-@app.post("/items/", response_model=Item)
-async def create_item(item: Item):
-    return item
+# Response model - what API returns
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: str | None
+    status: str
+
+@app.post("/tasks", response_model=TaskResponse, status_code=201)
+async def create_task(task: TaskCreate):
+    new_task = {
+        "id": len(tasks) + 1,
+        "title": task.title,
+        "description": task.description,
+        "status": "pending"
+    }
+    tasks.append(new_task)
+    return new_task
 ```
+
+**Why two models?** The client shouldn't provide `id` or `status`—those are set by the server. Separating models keeps responsibilities clear.
+
+- **Client says:** "Create a task with this title"
+- **Server says:** "Here's your task with ID 1, status pending"
 
 FastAPI automatically:
 - Validates request data
@@ -99,33 +292,107 @@ FastAPI automatically:
 - Generates API documentation
 - Returns proper HTTP responses
 
-### Dependency Injection
+### Error Handling
 
-Create reusable components:
+When things go wrong, your API needs to communicate clearly. Good error handling makes APIs predictable—and predictability matters enormously for agents.
+
+#### Why Error Handling Matters for Agents
+
+When agents call your API, they need to programmatically decide what to do:
+
+* **Retry on transient failures** (5xx errors)
+* **Report bad input to users** (4xx errors with helpful messages)
+* **Handle missing resources gracefully** (404 → create new one? skip?)
+* **Never retry on business rule violations** (400 → input fundamentally wrong)
+
+#### Using HTTPException
 
 ```python
-from typing import Annotated
-from fastapi import Depends
+from fastapi import HTTPException, status
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-@app.get("/users/")
-async def read_users(db: Annotated[Session, Depends(get_db)]):
-    return db.query(User).all()
+@app.get("/tasks/{task_id}")
+def get_task(task_id: int):
+    task = find_task(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task with id {task_id} not found"
+        )
+    return task
 ```
 
+**Key points:**
+- Use `raise HTTPException`, not `return`
+- Use `status` module constants for readability
+- Return appropriate status codes (404 for not found, 400 for bad request)
+
+#### 400 vs 422
+
+**422 Unprocessable Entity** — Pydantic validation failed (schema doesn't match)
+
+```python
+# Automatic - Pydantic returns 422
+POST /tasks
+{"description": "Missing title"}  # → 422
+```
+
+**400 Bad Request** — Business logic validation failed (schema matches, but violates rules)
+
+```python
+# Manual - You check business rules
+@app.post("/tasks")
+def create_task(task: TaskCreate):
+    if not task.title.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Title cannot be empty or whitespace"
+        )
+```
+
+**See [references/error-handling.md](references/error-handling.md) for:**
+- Complete error handling guide
+- HTTP status code semantics
+- Error message design for agents
+- Common mistakes and best practices
+- Structured error responses
+
+### Dependency Injection
+
+Every endpoint in your API needs shared resources: configuration, connections, services. You could create these inside each function, but that's repetitive and makes testing hard. Dependency injection solves this—FastAPI creates what your endpoint needs and passes it in.
+
+This pattern powers everything in the rest of this chapter. Settings, database sessions, authentication—all use `Depends()`.
+
+**Basic pattern:**
+
+```python
+from fastapi import Depends
+
+def get_config():
+    """Provide configuration to endpoints."""
+    return {"app_name": "Task API", "version": "1.0"}
+
+@app.get("/tasks")
+def list_tasks(config: dict = Depends(get_config)):
+    return {"app": config["app_name"]}
+```
+
+**Key concepts:**
+- Dependencies are just functions (or classes)
+- Use `@lru_cache` for expensive, static dependencies
+- Use `yield` for dependencies that need cleanup
+- FastAPI resolves dependency chains automatically
+
 **See [references/dependencies.md](references/dependencies.md) for:**
+- The problem and solution (repeated setup)
 - Basic dependencies
 - Classes as dependencies
+- Caching with lru_cache
 - Sub-dependencies
 - Dependencies with yield (setup/teardown)
 - Global dependencies
 - Dependency overrides for testing
+- Common mistakes and best practices
+- Hands-on exercises
 
 ## Security and Authentication
 
@@ -172,29 +439,209 @@ app.add_middleware(
 - Built-in middleware (GZip, TrustedHost, HTTPS redirect)
 - Common patterns (logging, error handling, rate limiting)
 
-## Testing
+## Testing with Pytest
 
-Use TestClient for easy testing:
+### Why Testing Matters for Agent APIs
 
+Testing isn't optional for FastAPI applications, especially when building agent-facing APIs:
+
+- **Agents can't guess** - They call exactly what your API exposes. No documentation mismatch, no hand-waving about "expected" behavior
+- **Errors cascade** - A broken endpoint breaks every agent that uses it. One failing endpoint can take down entire workflows
+- **Debugging is hard** - Agent failures often trace back to subtle API changes. Tests catch these before agents do
+- **Confidence enables iteration** - Tests let you refactor without fear. You can improve your code knowing nothing broke
+
+**Testing isn't something you add later—it's how you verify your code does what you think it does.**
+
+### Install Pytest
+
+Always use `uv` to install pytest as a development dependency:
+
+```bash
+uv add --dev pytest
+```
+
+Note: `httpx` (required by TestClient) is already included with `fastapi[standard]`.
+
+### The Red-Green Cycle (TDD Fundamentals)
+
+Test-Driven Development (TDD) follows a simple rhythm:
+
+1. **Write a failing test (RED)** - Test something that doesn't exist yet
+2. **Make it pass (GREEN)** - Write the minimum code to pass the test
+3. **Refactor** - Clean up your code while tests stay green
+
+**Example: Building a `/health` endpoint**
+
+**Step 1: Write the test first (RED)**
 ```python
+# test_main.py
 from fastapi.testclient import TestClient
+from main import app
 
 client = TestClient(app)
 
-def test_read_main():
+def test_health_check():
+    """GET /health returns operational status."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "operational"}
+```
+
+**Run it: `pytest test_main.py -v`**
+```
+test_main.py::test_health_check FAILED  # ❌ RED - Expected!
+```
+
+**Step 2: Make it pass (GREEN)**
+```python
+# main.py
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+async def get_health_status():
+    return {"status": "operational"}
+```
+
+**Run again: `pytest test_main.py -v`**
+```
+test_main.py::test_health_check PASSED  # ✅ GREEN - Success!
+```
+
+**Step 3: Refactor (optional)**
+```python
+# Improve the endpoint with more details
+@app.get("/health")
+async def get_health_status():
+    return {
+        "status": "operational",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+```
+
+Tests still pass! You can refactor with confidence.
+
+### Quick Testing Example
+
+Basic test structure for FastAPI:
+
+```python
+# test_main.py
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+def test_read_root():
+    """Test root endpoint returns welcome message."""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
+    assert response.json() == {"message": "Hello, World!"}
+
+def test_create_item():
+    """Test POST creates item with correct data."""
+    response = client.post(
+        "/items/",
+        json={"name": "Test Item", "price": 10.99}
+    )
+    assert response.status_code == 201
+    assert response.json()["name"] == "Test Item"
+    assert response.json()["price"] == 10.99
+
+def test_invalid_item():
+    """Test validation rejects invalid data."""
+    response = client.post(
+        "/items/",
+        json={"name": ""}  # Empty name should fail
+    )
+    assert response.status_code == 422  # Validation error
+```
+
+### Running Tests
+
+```bash
+# Run all tests with verbose output
+uv run pytest -v
+
+# Run specific test file
+uv run pytest test_main.py -v
+
+# Run tests matching a pattern
+uv run pytest -k "test_create" -v
+
+# Run with coverage report
+uv run pytest --cov=. --cov-report=html
+```
+
+### Test Organization
+
+For larger projects, organize tests in a dedicated directory:
+
+```
+my-api/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   └── routers/
+│       └── items.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py          # Shared fixtures
+│   ├── test_main.py
+│   └── test_items.py
+├── pyproject.toml
+└── pytest.ini               # Pytest configuration
+```
+
+**Example pytest.ini:**
+```ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+python_functions = test_*
+addopts = -v --tb=short
+```
+
+### Common Testing Patterns
+
+**Testing path parameters:**
+```python
+def test_get_item_by_id():
+    response = client.get("/items/123")
+    assert response.status_code == 200
+    assert response.json()["id"] == 123
+```
+
+**Testing query parameters:**
+```python
+def test_search_with_filters():
+    response = client.get("/search?q=test&limit=5")
+    assert response.status_code == 200
+    assert len(response.json()["results"]) <= 5
+```
+
+**Testing error cases:**
+```python
+def test_item_not_found():
+    response = client.get("/items/99999")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 ```
 
 **See [references/testing.md](references/testing.md) for:**
-- TestClient setup
-- Testing different request types
-- Testing authentication
-- Overriding dependencies
-- Testing file uploads
+- Complete pytest fundamentals and red-green cycle
+- TestClient setup and fixtures
+- Testing different request types (GET, POST, PUT, DELETE)
+- Testing authentication and protected endpoints
+- Overriding dependencies for testing
+- Testing file uploads and forms
 - Pytest fixtures and parametrization
-- Complete testing examples
+- Async testing patterns
+- Coverage reports and best practices
+- Agent-specific testing considerations
+- Complete working examples
 
 ## Background Tasks
 
@@ -428,6 +875,8 @@ async def read_items():
 For detailed information on specific topics:
 
 - **[path-operations.md](references/path-operations.md)** - Path params, query params, request/response handling
+- **[crud-operations.md](references/crud-operations.md)** - Complete CRUD operations guide, HTTP method semantics
+- **[error-handling.md](references/error-handling.md)** - HTTPException, status codes, error message design
 - **[dependencies.md](references/dependencies.md)** - Dependency injection patterns
 - **[security.md](references/security.md)** - Authentication and authorization
 - **[middleware-cors.md](references/middleware-cors.md)** - Middleware and CORS configuration
@@ -447,13 +896,76 @@ For detailed information on specific topics:
 
 ## Key Principles
 
-1. **Type hints everywhere** - Enables validation and documentation
-2. **Pydantic for data** - Request/response validation
-3. **Dependencies for reuse** - Avoid code repetition
-4. **Test with TestClient** - Easy, fast testing
-5. **Environment variables** - Never hardcode secrets
-6. **Structure matters** - Organize code as it grows
-7. **Read the docs** - FastAPI has excellent documentation
+1. **Always use type hints for path and query parameters** - Type hints enable automatic validation, better error messages, API documentation generation, and editor autocompletion. Never omit type hints on function parameters.
+   ```python
+   # ✓ GOOD - Type hints provide validation and docs
+   @app.get("/items/{item_id}")
+   async def get_item(item_id: int, limit: int = 10, q: str | None = None):
+       return {"item_id": item_id, "limit": limit, "query": q}
+
+   # ✗ BAD - Missing type hints loses validation and documentation
+   @app.get("/items/{item_id}")
+   async def get_item(item_id, limit=10, q=None):
+       return {"item_id": item_id, "limit": limit, "query": q}
+   ```
+
+2. **Always return dictionaries, never None** - Endpoints should always return valid JSON-serializable data. Return empty dictionaries `{}` or meaningful default responses instead of None.
+   ```python
+   # ✓ GOOD - Returns valid JSON response
+   @app.delete("/items/{item_id}")
+   async def delete_item(item_id: int):
+       delete_from_db(item_id)
+       return {"status": "deleted", "item_id": item_id}
+
+   # ✗ BAD - Returning None causes issues
+   @app.delete("/items/{item_id}")
+   async def delete_item(item_id: int):
+       delete_from_db(item_id)
+       return None
+   ```
+
+3. **Use descriptive function names matching endpoint purpose** - Function names should clearly describe what the endpoint does, not just the HTTP method. This improves code readability and generated documentation.
+   ```python
+   # ✓ GOOD - Clear, purpose-driven names
+   @app.get("/users/{user_id}")
+   async def get_user(user_id: int):
+       return {"user_id": user_id}
+
+   @app.post("/users/")
+   async def create_user(user: User):
+       return user
+
+   @app.get("/search")
+   async def search_items(q: str, limit: int = 10):
+       return {"query": q, "results": []}
+
+   # ✗ BAD - Generic names don't convey purpose
+   @app.get("/users/{user_id}")
+   async def handler1(user_id: int):
+       return {"user_id": user_id}
+
+   @app.post("/users/")
+   async def endpoint(user: User):
+       return user
+   ```
+
+4. **Always use uv package manager for project setup** - Use [uv](https://docs.astral.sh/uv/) for creating and managing FastAPI projects. Install FastAPI with: `uv add "fastapi[standard]"` which includes uvicorn, pydantic, and other essential dependencies.
+
+5. **Pydantic for data validation** - Use Pydantic models for request/response validation and automatic documentation generation.
+
+6. **Dependencies for reuse** - Leverage FastAPI's dependency injection system to avoid code repetition and improve testability. Use `Depends()` to share configuration, database connections, and authentication logic across endpoints. Use `@lru_cache` for expensive, static dependencies (like configuration). Use `yield` in dependencies that need cleanup (like database sessions). Remember: pass the function to `Depends()`, don't call it.
+
+7. **Test with TestClient** - Write tests using FastAPI's TestClient for easy, fast endpoint testing without running a server.
+
+8. **Environment variables for configuration** - Never hardcode secrets, API keys, or environment-specific settings. Use environment variables and configuration management.
+
+9. **Structure matters as projects grow** - Start simple, but organize code into routers, schemas, services, and dependencies as the project grows.
+
+10. **Consult official documentation** - FastAPI has excellent documentation at https://fastapi.tiangolo.com - always reference it for advanced patterns and best practices.
+
+11. **CRUD operations are the foundation** - Master Create, Read, Update, Delete operations to build data-driven APIs. Every agent that manages state needs CRUD. Use proper HTTP methods (GET for read, POST for create, PUT for update, DELETE for delete) with correct semantics. GET is safe and cacheable, PUT/DELETE are idempotent and can be safely retried on failure.
+
+12. **Handle errors explicitly with HTTPException** - Always raise HTTPException for HTTP errors (not Python exceptions). Use status module constants (status.HTTP_404_NOT_FOUND) for readability. Return appropriate status codes: 404 for not found, 400 for business rule violations, 422 for schema validation (automatic). Design error messages that are helpful for both humans and agents, including context about what went wrong and what's valid.
 
 ## Common Issues
 
@@ -479,3 +991,93 @@ Use dependencies with `yield` for proper connection management.
 - Use multiple workers for production
 - Configure proper CORS origins
 - Use environment variables for secrets
+
+## Troubleshooting uv and Project Setup
+
+### uv command not found
+
+**Problem**: `bash: uv: command not found`
+
+**Solution**: Install uv:
+```bash
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Verify installation
+uv --version
+```
+
+### Cannot run fastapi dev - UnicodeEncodeError
+
+**Problem**: `UnicodeEncodeError: 'charmap' codec can't encode character`
+
+**Solution**: Use uvicorn directly:
+```bash
+# Instead of: fastapi dev main.py
+# Use:
+uv run uvicorn main:app --reload
+```
+
+### pyproject.toml not found
+
+**Problem**: Running commands outside uv project
+
+**Solution**: Always create a uv project first:
+```bash
+uv init my-project
+cd my-project
+uv add "fastapi[standard]"
+# Now create your code files
+```
+
+### ImportError: No module named 'fastapi'
+
+**Problem**: Dependencies not installed or wrong environment
+
+**Solution**: Ensure you're using uv run:
+```bash
+# Install dependencies
+uv add "fastapi[standard]"
+
+# Run with uv (uses correct virtual environment)
+uv run uvicorn main:app --reload
+
+# NOT: python main.py  (uses wrong Python)
+```
+
+### Virtual environment issues
+
+**Problem**: Packages not found even after installation
+
+**Solution**: Always prefix commands with `uv run`:
+```bash
+uv run pytest          # NOT: pytest
+uv run python main.py  # NOT: python main.py
+uv run uvicorn main:app  # NOT: uvicorn main:app
+```
+
+### Stale lock file
+
+**Problem**: Dependencies out of sync
+
+**Solution**: Update the lock file:
+```bash
+uv lock --upgrade
+uv sync
+```
+
+### Missing standard dependencies
+
+**Problem**: uvicorn, pydantic, etc. not installed
+
+**Solution**: Always use `fastapi[standard]`:
+```bash
+# CORRECT
+uv add "fastapi[standard]"
+
+# WRONG - missing dependencies
+uv add fastapi
+```

@@ -2,6 +2,21 @@
 
 Complete guide to handling path operations, parameters, request bodies, and responses in FastAPI.
 
+**See [references/crud-operations.md](references/crud-operations.md) for:**
+- Complete CRUD implementation guide
+- HTTP method semantics and idempotency
+- Filtering and query parameters
+- Update complexity (PUT vs PATCH)
+- Complete Task API example
+- Hands-on exercises and challenges
+
+**See [references/error-handling.md](references/error-handling.md) for:**
+- Complete guide to HTTPException
+- 400 vs 422 distinction with examples
+- Error message design
+- Status code semantics
+- Agent-friendly error responses
+
 ## Table of Contents
 - HTTP Methods and Decorators
 - Path Parameters
@@ -162,6 +177,44 @@ async def read_item(
     return {"item_id": item_id, "needy": needy, "skip": skip, "limit": limit}
 ```
 
+## Why Pydantic Matters for Agents
+
+GET endpoints retrieve data. POST endpoints create data. To create a task, you need to send data in the request body. FastAPI uses Pydantic models to define what that data should look like and validate it automatically.
+
+This matters for agents: when clients send requests to your agent endpoints, Pydantic ensures the input is valid _before_ your agent sees it. Bad data gets rejected at the door, not halfway through an expensive LLM call.
+
+In MCP servers, you validated tool parameters. Pydantic does the same thing for HTTP APIs. When an agent endpoint receives JSON, Pydantic:
+
+1. Parses the raw JSON bytes
+2. Validates data types match your model
+3. Checks required fields are present
+4. Rejects invalid data with helpful error messages
+
+This validation layer is critical when agents compose tools. One agent's output becomes another's input. Type safety at every boundary prevents cascading failures.
+
+## How Pydantic Validates (Under the Hood)
+
+When you write `title: str`, Pydantic:
+
+1. **Checks existence** — Is there a "title" key in the JSON? Missing → `Field required` error
+2. **Checks type** — Is the value a string? Wrong type → `string_type` error
+3. **Attempts coercion** — `"123"` (string) passes. `123` (int) gets coerced to `"123"`
+4. **Passes validated data** — Your function receives a guaranteed string
+
+This is why `task.title` in your function is GUARANTEED to be a string. No defensive `if isinstance(title, str)` checks needed.
+
+But what if you need custom validation? Title must be 3-100 characters:
+
+```python
+from pydantic import BaseModel, Field
+
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=3, max_length=100)
+    description: str | None = None
+```
+
+Now Pydantic enforces length constraints automatically.
+
 ## Request Body
 
 Use Pydantic models for request bodies.
@@ -203,6 +256,52 @@ async def create_item(item: Item):
         item_dict.update({"price_with_tax": price_with_tax})
     return item_dict
 ```
+
+### Defining Task Models
+
+Separating request and response models is a best practice:
+
+* Client says: "Create a task with this title"
+* Server says: "Here's your task with ID 1, status pending"
+
+This separation matters more as your API grows. You might have `TaskCreate`, `TaskUpdate`, `TaskResponse`, `TaskSummary`—each exposing exactly what that operation needs.
+
+```python
+from pydantic import BaseModel
+
+# Request model - what client sends
+class TaskCreate(BaseModel):
+    title: str
+    description: str | None = None
+
+# Response model - what API returns
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: str | None
+    status: str
+
+# In-memory storage
+tasks: list[dict] = []
+
+@app.post("/tasks", response_model=TaskResponse, status_code=201)
+def create_task(task: TaskCreate):
+    new_task = {
+        "id": len(tasks) + 1,
+        "title": task.title,
+        "description": task.description,
+        "status": "pending"
+    }
+    tasks.append(new_task)
+    return new_task
+```
+
+**Breaking down the key elements:**
+
+* `@app.post("/tasks")` — This endpoint handles POST requests
+* `task: TaskCreate` — FastAPI parses the request body as a `TaskCreate` model
+* `response_model=TaskResponse` — FastAPI validates the response matches this model
+* `status_code=201` — Return 201 Created instead of default 200
 
 ### Request Body + Path Parameters
 
@@ -276,6 +375,80 @@ async def create_item(item: Item):
 async def delete_item(item_id: int):
     return None
 ```
+
+## Validation Errors: What Students Find Confusing
+
+This is where many students get stuck. Let's work through it carefully.
+
+**Try posting with missing title:**
+
+```json
+{
+  "description": "Missing title"
+}
+```
+
+**Output:**
+
+```json
+HTTP/1.1 422 Unprocessable Entity
+content-type: application/json
+
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "title"],
+      "msg": "Field required",
+      "input": {"description": "Missing title"}
+    }
+  ]
+}
+```
+
+**Reading this error:**
+
+* `type: "missing"` — What kind of validation failure
+* `loc: ["body", "title"]` — Where the error is: in the body, at field "title"
+* `msg: "Field required"` — Human-readable explanation
+* `input` — What you actually sent
+
+**Why 422 and not 400?**
+
+This confuses people. Here's the distinction:
+
+* **422 Unprocessable Entity** — The JSON is valid, but data doesn't match the schema. Pydantic catches these automatically.
+* **400 Bad Request** — Business logic validation failed (e.g., "title can't be empty whitespace" after trimming). You handle these in your code with `HTTPException`.
+
+FastAPI automatically returns 422 for schema violations. You'll add 400 errors in error handling lessons.
+
+**Try posting with wrong type:**
+
+```json
+{
+  "title": 123
+}
+```
+
+**Output:**
+
+```json
+HTTP/1.1 422 Unprocessable Entity
+content-type: application/json
+
+{
+  "detail": [
+    {
+      "type": "string_type",
+      "loc": ["body", "title"],
+      "msg": "Input should be a valid string",
+      "input": 123
+    }
+  ]
+}
+```
+
+Pydantic caught that `title` should be a string, not a number.
 
 ## Data Validation
 
