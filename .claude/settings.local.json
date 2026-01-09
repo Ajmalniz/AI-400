@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(context7-efficient)",
+      "Bash(bash:*)",
+      "Skill(skill-creator)",
+      "Bash(python:*)",
+      "Bash(PYTHONIOENCODING=utf-8 python:*)",
+      "Bash(export PYTHONIOENCODING=utf-8)"
+    ]
+  }
+}
