@@ -93,6 +93,36 @@ Upon completion, I will be able to:
 
 **Overall Progress:** 0/5 Modules Completed (0%)
 
+## Skills Development & Learning Notes
+
+### Skill Design Best Practices
+
+**Key Principle:** Use progressive disclosure with domain-specific organization for complex skills.
+
+**Example - E-commerce Skill Structure:**
+```
+ecommerce/
+├── SKILL.md (overview, workflow, navigation)
+└── references/
+    ├── products.md (catalog, inventory, categories)
+    ├── cart.md (shopping cart, session management)
+    ├── orders.md (order processing, fulfillment)
+    ├── payments.md (payment gateways, transactions)
+    ├── users.md (authentication, profiles, addresses)
+    ├── shipping.md (delivery, tracking, zones)
+    └── admin.md (dashboard, analytics, management)
+```
+
+**Guidelines:**
+- Keep SKILL.md under 500 lines (concise is key)
+- Use one skill for cohesive domains (e.g., e-commerce as one system)
+- Split complex domains into reference files (loaded only when needed)
+- Separate skills only if truly independent (different deployment cycles/teams)
+
+**Skills to Build:**
+- [ ] E-commerce development skill (planned)
+- [ ] _(Add more skills as they come up)_
+
 ## Repository Structure
 
 ```
@@ -103,6 +133,7 @@ Upon completion, I will be able to:
 ├── module-4/          # DAPR Core: Cloud-Agnostic Abstractions
 ├── module-5/          # Production Operations: Observability, Scaling & CI/CD
 ├── projects/          # Course projects and assignments
+├── skills/            # Claude Code skills development
 └── notes/             # Course notes and documentation
 ```
 
