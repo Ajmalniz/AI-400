@@ -1,20 +1,119 @@
-# Hands-on Skills
+# AI-400: Cloud-Native AI — Learn Dapr, Docker & Kubernetes with AIDD
 
-A collection of hands-on skills for students to explore and practice when learning the Skills concept in Claude Code. These examples accompany **Lesson 04 of Chapter 5** in the AI Native Development book.
+This repository contains my progress and work for the **AI-400** course from Panaversity.
 
-**Reading Material:** [Claude Code Features and Workflows](https://ai-native.panaversity.org/docs/AI-Tool-Landscape/claude-code-features-and-workflows)
+**Course Page:** [AI-400 - Cloud-Native AI](https://panaversity.org/flagship-program/courses/AI-400)
 
-## Skills
+## Course Overview
 
-| Skill | Purpose |
-|-------|---------|
-| **browser-use** | Browser automation using Playwright MCP. Navigate websites, fill forms, click elements, take screenshots, and extract data. Use when tasks require web browsing, form submission, web scraping, UI testing, or any browser interaction |
-| **context7-efficient** | Token-efficient library documentation fetcher for various programming languages, providing code examples, API references, and best practices. |
-| **doc-coauthoring** | Guide users through a structured workflow for co-authoring documentation including proposals, technical specs, decision docs, and similar structured content |
-| **docx** | Comprehensive Word document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction |
-| **internal-comms** | Resources to help write internal communications including 3P updates, company newsletters, FAQs, status reports, leadership updates, and incident reports |
-| **pdf** | PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms |
-| **pptx** | PowerPoint presentation creation, editing, and analysis including layouts, speaker notes, comments, and visual design |
-| **skill-creator** | Guide for creating effective skills that extend Claude's capabilities with specialized knowledge, workflows, or tool integrations |
-| **theme-factory** | Toolkit for styling artifacts (slides, docs, reports, HTML) with 10 pre-set professional themes or custom on-the-fly theme generation |
-| **xlsx** | Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization |
+**Cloud-Native AI** teaches you how to build cloud infrastructure for AI agents using Specification-Driven Development and AI-Driven Development (AIDD). You'll learn to take AI projects from local experiments to production-grade systems that scale automatically, recover gracefully, and run anywhere.
+
+**Duration:** 3 months  
+**Prerequisites:** AI-300 (AI-Driven Development with Python and Agentic AI)
+
+## Course Description
+
+The way we build and run AI is changing. It's no longer just about running agents on your laptop—it's about deploying intelligent systems that live and scale in the cloud. Cloud-Native AI gives you the skills to take your AI projects from local experiments to production-grade systems.
+
+In this course, you'll learn how to build cloud infrastructure for AI agents using Specification-Driven Development and AI-Driven Development (AIDD). You'll start with FastAPI and Docker, packaging your applications into portable containers. Then move to Kubernetes, learning how to run and manage those containers at scale. Finally, you'll explore Dapr, the layer that makes your AI systems cloud-agnostic, with built-in support for state management, pub/sub messaging, and service communication.
+
+## Key Learning Modules
+
+### Module 1: Foundations: Cloud Native Infrastructure for AI
+- Master Context Engineering to structure AI collaboration for infrastructure design
+- Partner with Claude Code to understand containerization (Docker), orchestration (Kubernetes), and cloud-agnostic abstractions (Dapr)
+- Learn Spec-Driven Development (SDD) fundamentals
+- Establish professional thinking patterns for production deployment
+
+**Status:** ⏳ Not Started
+
+---
+
+### Module 2: Docker Fundamentals: Containerizing AI Applications
+- Containerize FastAPI services using Docker with AIDD and SDD
+- Multi-stage builds, Python dependencies, layer optimization
+- Master container networking, health checks, and Docker Compose for local development
+- Focus on specification and validation, not Dockerfile syntax memorization
+
+**Status:** ⏳ Not Started
+
+---
+
+### Module 3: Kubernetes Basics: Orchestrating Agent Systems
+- Orchestrate agent systems on Kubernetes with AIDD and SDD using kubectl-ai and kagent
+- Specify deployment requirements—pods, services, ConfigMaps, StatefulSets
+- Master Kubernetes primitives through specifications
+- Event-driven patterns with Kafka and production-grade configurations
+
+**Status:** ⏳ Not Started
+
+---
+
+### Module 4: DAPR Core: Cloud-Agnostic Abstractions
+- Implement Dapr Core and Dapr Workflows for cloud-agnostic communication and long-running processes
+- Specify requirements—state stores, pub/sub, service invocation, durable workflows
+- Master cloud-portable patterns: state works with any database, pub/sub with any broker
+- Write once, deploy anywhere
+
+**Status:** ⏳ Not Started
+
+---
+
+### Module 5: Production Operations: Observability, Scaling & CI/CD
+- Build production-ready AI systems using SDD for operations and monitoring
+- Specify observability requirements—OpenTelemetry traces, metrics, cost dashboards
+- Master autoscaling, CI/CD with Testcontainers and GitHub Actions
+- Infrastructure-as-Code with Terraform
+
+**Status:** ⏳ Not Started
+
+---
+
+## Course Outcomes
+
+Upon completion, I will be able to:
+
+- ✅ Apply Context Engineering to structure effective AI collaboration for infrastructure design
+- ✅ Partner with Claude Code to generate production-ready cloud configurations from specifications
+- ✅ Master Spec-Driven Development (SDD) to design infrastructure through clear intent, not manual YAML
+- ✅ Containerize AI applications with Docker using AIDD and SDD for multi-stage builds and optimization
+- ✅ Orchestrate agent systems on Kubernetes with AIDD and SDD using kubectl-ai and kagent
+- ✅ Implement Dapr Core and Dapr Workflows for cloud-agnostic state, pub/sub, and long-running processes
+- ✅ Build observable, scalable AI systems with OpenTelemetry, autoscaling, and automated CI/CD pipelines
+
+## Progress Tracker
+
+| Module | Status | Start Date | Completion Date | Notes |
+|--------|--------|------------|-----------------|-------|
+| Module 1: Foundations | ⏳ Not Started | - | - | - |
+| Module 2: Docker Fundamentals | ⏳ Not Started | - | - | - |
+| Module 3: Kubernetes Basics | ⏳ Not Started | - | - | - |
+| Module 4: DAPR Core | ⏳ Not Started | - | - | - |
+| Module 5: Production Operations | ⏳ Not Started | - | - | - |
+
+**Overall Progress:** 0/5 Modules Completed (0%)
+
+## Repository Structure
+
+```
+.
+├── module-1/          # Foundations: Cloud Native Infrastructure for AI
+├── module-2/          # Docker Fundamentals: Containerizing AI Applications
+├── module-3/          # Kubernetes Basics: Orchestrating Agent Systems
+├── module-4/          # DAPR Core: Cloud-Agnostic Abstractions
+├── module-5/          # Production Operations: Observability, Scaling & CI/CD
+├── projects/          # Course projects and assignments
+└── notes/             # Course notes and documentation
+```
+
+## Resources
+
+- [Course Page](https://panaversity.org/flagship-program/courses/AI-400)
+- [Panaversity](https://panaversity.org)
+
+---
+
+**Status Legend:**
+- ⏳ Not Started
+- 🚧 In Progress
+- ✅ Completed
