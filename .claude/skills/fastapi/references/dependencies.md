@@ -326,6 +326,32 @@ async def read_items(pagination: PaginationDep):
     return fake_items_db[pagination["skip"]:pagination["skip"] + pagination["limit"]]
 ```
 
+### Settings as Dependency
+
+Environment variables are commonly used with dependency injection:
+
+```python
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    app_name: str = "Task API"
+    debug: bool = False
+
+    class Config:
+        env_file = ".env"
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+@app.get("/info")
+def app_info(settings: Settings = Depends(get_settings)):
+    return {"app_name": settings.app_name}
+```
+
+See [references/environment-variables.md](environment-variables.md) for complete guide.
+
 ## Dependencies in Path Operation Decorators
 
 For dependencies that don't return values (side effects only):

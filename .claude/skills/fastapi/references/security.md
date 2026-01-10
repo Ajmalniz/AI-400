@@ -4,6 +4,8 @@ Complete guide to implementing authentication, authorization, and security in Fa
 
 ## Table of Contents
 - Security Overview
+- Password Hashing
+- JWT Authentication
 - OAuth2 with Password (and Bearer)
 - OAuth2 with JWT Tokens
 - API Key Authentication
@@ -20,6 +22,89 @@ FastAPI provides tools in `fastapi.security` for implementing security based on 
 2. **http** - HTTP authentication (Bearer, Basic, Digest)
 3. **oauth2** - OAuth2 flows (password, implicit, clientCredentials, authorizationCode)
 4. **openIdConnect** - OAuth2 with automatic discovery
+
+## Password Hashing
+
+Before implementing authentication, you must understand secure password storage. **Never store plaintext passwords.**
+
+User passwords must be hashed before storage using Argon2:
+
+```python
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
+
+password_hash = PasswordHash((Argon2Hasher(),))
+
+def hash_password(password: str) -> str:
+    """Hash a password using Argon2."""
+    return password_hash.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return password_hash.verify(plain_password, hashed_password)
+```
+
+**Key principles:**
+
+- Never store plaintext passwords
+- Use Argon2 (gold standard, memory-hard, GPU-resistant)
+- Never return password hashes in API responses
+- Use `hashed_password` field name (not `password`)
+
+**Installation:**
+
+```bash
+uv add "pwdlib[argon2]"
+```
+
+**See [references/user-management.md](user-management.md) for:**
+- Complete password hashing guide
+- Why Argon2 is the gold standard
+- User signup implementation
+- Security principles for password storage
+- Hands-on exercises
+- Common security mistakes
+
+## JWT Authentication
+
+Stateless authentication using signed tokens. Users log in once, receive a JWT, and include it in subsequent requests.
+
+**How it works:**
+
+1. User sends email/password to `/token`
+2. Server verifies password and creates signed JWT
+3. User includes token in `Authorization: Bearer <token>` header
+4. Server validates signature and extracts user identity
+
+**Key concepts:**
+
+- JWTs are signed, not encrypted—anyone can read the payload
+- Only include user identifiers in tokens (not sensitive data)
+- Tokens expire automatically (configurable)
+- OAuth2PasswordBearer extracts token from Authorization header
+- OAuth2PasswordRequestForm expects form data (not JSON)
+
+**Installation:**
+
+```bash
+uv add "python-jose[cryptography]"
+```
+
+**Generate secret key:**
+
+```bash
+openssl rand -hex 32
+```
+
+**See [references/jwt-authentication.md](jwt-authentication.md) for:**
+- Complete JWT implementation guide
+- Token creation and validation functions
+- Login endpoint with OAuth2PasswordRequestForm
+- Protected routes with get_current_user dependency
+- Protecting resources with user ownership
+- Swagger UI OAuth2 integration
+- Complete authentication flow
+- Common mistakes and best practices
 
 ## OAuth2 with Password and Bearer
 

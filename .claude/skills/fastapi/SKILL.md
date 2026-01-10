@@ -394,6 +394,259 @@ def list_tasks(config: dict = Depends(get_config)):
 - Common mistakes and best practices
 - Hands-on exercises
 
+## Environment Configuration
+
+Never hardcode secrets, API keys, or environment-specific settings. Use environment variables with pydantic-settings for type-safe configuration.
+
+**Basic pattern:**
+
+```python
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    database_url: str
+    api_key: str
+    debug: bool = False
+
+    class Config:
+        env_file = ".env"
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+```
+
+**Critical security practices:**
+- Add `.env` to `.gitignore`
+- Create `.env.example` template (committed, no secrets)
+- Never commit secrets to version control
+
+**See [references/environment-variables.md](references/environment-variables.md) for:**
+- Complete pydantic-settings guide
+- .env file setup and security
+- Validation and error handling
+- Hands-on exercises
+- Security checklist
+
+## Database Integration with SQLModel
+
+Connect your FastAPI app to PostgreSQL using SQLModel (Pydantic + SQLAlchemy). This is the "fast track" approach for persistent storage.
+
+**Basic pattern:**
+
+```python
+from sqlmodel import SQLModel, Field, Session, create_engine, select
+from typing import Optional
+
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+    status: str = Field(default="pending")
+
+engine = create_engine(settings.database_url)
+
+@app.on_event("startup")
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+@app.post("/tasks")
+def create_task(task: Task, session: Session = Depends(get_session)):
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+@app.get("/tasks")
+def list_tasks(session: Session = Depends(get_session)):
+    tasks = session.exec(select(Task)).all()
+    return tasks
+```
+
+**Key concepts:**
+- `table=True` makes it a database table
+- `create_engine()` connects to database
+- `get_session()` dependency provides Session with yield
+- `commit()` saves changes, `refresh()` gets database-assigned ID
+- `select()` creates queries, `exec()` executes them
+
+**Install dependencies:**
+
+```bash
+uv add sqlmodel psycopg2-binary
+```
+
+**See [references/sqlmodel-database.md](references/sqlmodel-database.md) for:**
+- Neon PostgreSQL setup (managed database, no installation)
+- Complete SQLModel patterns
+- CRUD operations with Session
+- Table creation on startup
+- Model definition with Field types
+- Connection string format (`?sslmode=require` for Neon)
+- Complete working examples
+- Common mistakes and best practices
+- Migration strategy (create_all vs Alembic)
+
+## User Management & Password Hashing
+
+Before storing passwords, understand: **you never store passwords**. You store _hashes_.
+
+**Why password hashing matters:**
+- If database leaks, attackers get useless hashes (not plaintext passwords)
+- Argon2 is the gold standard (memory-hard, GPU-resistant)
+- Each hash must be cracked individually—expensive and slow
+
+**Basic pattern:**
+
+```python
+from pwdlib import PasswordHash
+from pwdlib.hashers.argon2 import Argon2Hasher
+from pydantic import EmailStr
+
+password_hash = PasswordHash((Argon2Hasher(),))
+
+def hash_password(password: str) -> str:
+    return password_hash.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return password_hash.verify(plain, hashed)
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(primary_key=True)
+    email: EmailStr = Field(unique=True, index=True)
+    hashed_password: str  # Named explicitly to avoid confusion
+
+class UserCreate(SQLModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+class UserResponse(SQLModel):
+    id: int
+    email: EmailStr
+
+@app.post("/users/signup", response_model=UserResponse)
+def signup(user: UserCreate, session: Session = Depends(get_session)):
+    # Check for duplicate email
+    existing = session.exec(select(User).where(User.email == user.email)).first()
+    if existing:
+        raise HTTPException(400, "Email already registered")
+
+    # Hash password and create user
+    hashed = hash_password(user.password)
+    db_user = User(email=user.email, hashed_password=hashed)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
+```
+
+**Security principles:**
+- Never store plaintext passwords
+- Never return hashes in API responses
+- Use `hashed_password` field name (not `password`)
+- Check for duplicate emails before creating users
+- Use Argon2 (not MD5/SHA)
+
+**Install dependencies:**
+
+```bash
+uv add "pwdlib[argon2]" email-validator
+```
+
+**See [references/user-management.md](references/user-management.md) for:**
+- Complete password hashing guide
+- Why Argon2 is the gold standard
+- User signup endpoint implementation
+- Security best practices
+- Hands-on exercises
+- Common mistakes to avoid
+- Preview of JWT authentication (next step)
+
+## JWT Authentication
+
+HTTP is stateless—tokens enable authentication without session storage. Users log in once, get a token, and include it in subsequent requests.
+
+**How JWT works:**
+1. User sends email/password to `/token`
+2. Server verifies password and creates signed JWT
+3. User includes token in `Authorization: Bearer <token>` header
+4. Server validates signature and extracts user identity
+
+**Basic pattern:**
+
+```python
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import jwt, JWTError
+from datetime import datetime, timedelta
+
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Token creation
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=30)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
+
+# Login endpoint
+@app.post("/token")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    # Find user and verify password
+    user = session.exec(select(User).where(User.email == form_data.username)).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(401, "Incorrect email or password")
+
+    # Create and return token
+    access_token = create_access_token({"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Get current user from token
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+    email = payload.get("sub")
+    user = session.exec(select(User).where(User.email == email)).first()
+    return user
+
+# Protected route
+@app.get("/users/me")
+def read_current_user(current_user: User = Depends(get_current_user)):
+    return current_user
+```
+
+**Key concepts:**
+- JWTs are signed (not encrypted) - anyone can read, only server can create valid signatures
+- OAuth2 uses form data for `/token` endpoint (not JSON)
+- Use `Authorization: Bearer <token>` header for protected routes
+- Swagger UI has built-in OAuth2 support (Authorize button)
+- Token contains `{"sub": email, "exp": timestamp}` - only identifiers, not sensitive data
+
+**Install dependencies:**
+
+```bash
+uv add "python-jose[cryptography]"
+```
+
+**Generate secure secret key:**
+
+```bash
+openssl rand -hex 32
+```
+
+**See [references/jwt-authentication.md](references/jwt-authentication.md) for:**
+- Complete JWT implementation guide
+- Token creation and validation functions
+- Protected route patterns
+- OAuth2 password flow
+- Protecting task routes with user ownership
+- Swagger UI integration
+- Complete authentication flow diagram
+- Common mistakes and best practices
+
 ## Security and Authentication
 
 FastAPI provides built-in security utilities:
@@ -419,7 +672,29 @@ async def read_users_me(token: Annotated[str, Depends(oauth2_scheme)]):
 
 ## Middleware and CORS
 
-Add cross-cutting concerns:
+Middleware intercepts every request before endpoints and every response before returning to clients. This solves two critical problems for agent APIs:
+
+1. **CORS** - Frontends on different domains need permission to call your API
+2. **Observability** - Track request timing, logging, and headers
+
+**Basic middleware pattern:**
+
+```python
+from fastapi import FastAPI, Request
+import time
+
+app = FastAPI()
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
+```
+
+**CORS configuration:**
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -433,11 +708,21 @@ app.add_middleware(
 )
 ```
 
+**Key concepts:**
+- Middleware executes in reverse order (last added = outermost)
+- CORS must allow explicit origins when `allow_credentials=True` (not `["*"]`)
+- Use `await call_next(request)` to pass to next middleware/route
+- Always return the response
+
 **See [references/middleware-cors.md](references/middleware-cors.md) for:**
-- Custom middleware
-- CORS configuration
-- Built-in middleware (GZip, TrustedHost, HTTPS redirect)
-- Common patterns (logging, error handling, rate limiting)
+- Complete middleware guide
+- Custom middleware patterns (timing, logging, request ID)
+- CORS configuration and parameters
+- Production vs development setup
+- Request logging and timing
+- Middleware execution order (stack behavior)
+- Common mistakes and best practices
+- Why middleware matters for agent APIs
 
 ## Testing with Pytest
 
@@ -642,6 +927,214 @@ def test_item_not_found():
 - Coverage reports and best practices
 - Agent-specific testing considerations
 - Complete working examples
+
+## Lifespan Events
+
+Your agent API needs resources ready before handling requests. Lifespan events let you run code at startup (before any request) and shutdown (after the last response).
+
+**The lifespan pattern:**
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP: Code here runs before first request
+    print("Loading resources...")
+    app.state.db_pool = create_db_pool()
+    app.state.ml_model = load_model()
+    yield  # Server runs and handles requests
+    # SHUTDOWN: Code here runs after server stops
+    print("Cleaning up...")
+    await app.state.db_pool.dispose()
+    del app.state.ml_model
+
+app = FastAPI(lifespan=lifespan)
+```
+
+**Key concepts:**
+- Everything before `yield` runs at startup
+- Everything after `yield` runs at shutdown
+- Use `app.state` to share resources with endpoints
+- Access via `request.app.state` in endpoints
+- Replace deprecated `@app.on_event()` decorator
+
+**Common use cases:**
+- Database connection pools
+- Preloading ML models
+- Initializing external API clients (httpx, Anthropic, OpenAI)
+- Setting up caches
+
+**Using shared resources in endpoints:**
+
+```python
+from fastapi import Request
+
+@app.get("/users")
+def list_users(request: Request):
+    # Access resources from app.state
+    db = request.app.state.db_pool
+    cache = request.app.state.cache
+    return db.query_users()
+```
+
+**See [references/lifespan-events.md](references/lifespan-events.md) for:**
+- Complete lifespan implementation guide
+- Database pool setup with SQLModel
+- ML model preloading (avoid cold starts)
+- External client initialization (httpx, Anthropic, OpenAI)
+- Production-ready complete example
+- Deprecated `@app.on_event()` comparison
+- Common mistakes and best practices
+- Why lifespan matters for agent APIs
+
+## Streaming with SSE
+
+Some operations take time. Streaming sends data as it becomes available—token by token for LLMs, update by update for long-running tasks. Essential for agent APIs where users need real-time feedback.
+
+**Why streaming matters:**
+- Users see responses forming in real-time
+- Better perceived performance (first byte matters)
+- Long operations show progress
+- Failed operations fail fast
+
+**Basic pattern:**
+
+```python
+from sse_starlette.sse import EventSourceResponse
+import asyncio
+import json
+
+async def task_updates_generator():
+    for i in range(5):
+        yield {
+            "event": "task_update",
+            "data": json.dumps({"progress": (i + 1) * 20})
+        }
+        await asyncio.sleep(1)
+    yield {
+        "event": "complete",
+        "data": json.dumps({"message": "Done"})
+    }
+
+@app.get("/tasks/stream")
+async def stream_task_updates():
+    return EventSourceResponse(task_updates_generator())
+```
+
+**Key concepts:**
+- Async generators use `yield` (not `return`)
+- SSE data must be JSON string (use `json.dumps()`)
+- Use `await asyncio.sleep()` not `time.sleep()` (non-blocking)
+- `EventSourceResponse` handles SSE formatting
+- Browser EventSource API for testing
+
+**Why SSE over WebSockets:**
+- Simpler (just HTTP with special content type)
+- Works through proxies without configuration
+- Browser handles reconnection automatically
+- One-directional (perfect for server → client)
+
+**Installation:**
+
+```bash
+uv add sse-starlette
+```
+
+**Testing in browser:**
+
+```javascript
+const eventSource = new EventSource('/tasks/stream');
+
+eventSource.addEventListener('task_update', (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Progress:', data.progress);
+});
+
+eventSource.addEventListener('complete', (event) => {
+    console.log('Complete!');
+    eventSource.close();
+});
+```
+
+**Agent streaming example:**
+
+```python
+@app.get("/agent/think/stream")
+async def stream_agent_thinking(query: str):
+    async def thinking_stream():
+        # Show thinking steps
+        yield {
+            "event": "thought",
+            "data": json.dumps({"message": "Analyzing query..."})
+        }
+        await asyncio.sleep(1)
+
+        # Stream response tokens
+        response = "Based on analysis, here is the answer."
+        for word in response.split():
+            yield {
+                "event": "token",
+                "data": json.dumps({"token": word + " "})
+            }
+            await asyncio.sleep(0.1)
+
+        # Completion
+        yield {
+            "event": "complete",
+            "data": json.dumps({"done": True})
+        }
+
+    return EventSourceResponse(thinking_stream())
+```
+
+**Error handling in streams:**
+
+```python
+async def safe_stream():
+    try:
+        for i in range(10):
+            yield {"event": "progress", "data": json.dumps({"step": i})}
+            await asyncio.sleep(1)
+    except Exception as e:
+        # Send error as SSE event
+        yield {
+            "event": "error",
+            "data": json.dumps({"error": str(e)})
+        }
+```
+
+**Detect client disconnection:**
+
+```python
+from starlette.requests import Request
+
+@app.get("/stream")
+async def stream_with_disconnect(request: Request):
+    async def generate():
+        for i in range(100):
+            if await request.is_disconnected():
+                print("Client disconnected")
+                break
+            yield {"event": "message", "data": json.dumps({"count": i})}
+            await asyncio.sleep(1)
+
+    return EventSourceResponse(generate())
+```
+
+**See [references/streaming-sse.md](references/streaming-sse.md) for:**
+- Complete SSE implementation guide
+- Why streaming changes everything
+- How SSE works (protocol details)
+- Async generator patterns
+- Browser EventSource API examples
+- Testing with curl and JavaScript
+- Error handling in streams
+- Client disconnection detection
+- Complete working examples
+- Common mistakes (json.dumps, yield vs return, async sleep)
+- Why SSE is perfect for agent APIs
 
 ## Background Tasks
 
@@ -957,7 +1450,7 @@ For detailed information on specific topics:
 
 7. **Test with TestClient** - Write tests using FastAPI's TestClient for easy, fast endpoint testing without running a server.
 
-8. **Environment variables for configuration** - Never hardcode secrets, API keys, or environment-specific settings. Use environment variables and configuration management.
+8. **Environment variables for configuration** - Never hardcode secrets, API keys, or environment-specific settings. Use pydantic-settings with BaseSettings for type-safe configuration. Always add `.env` to `.gitignore` and create `.env.example` as a template. Cache settings with `@lru_cache` on `get_settings()` function. Use `Depends(get_settings)` for dependency injection.
 
 9. **Structure matters as projects grow** - Start simple, but organize code into routers, schemas, services, and dependencies as the project grows.
 

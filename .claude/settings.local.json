@@ -15,7 +15,8 @@
       "Bash(uv add:*)",
       "Bash(uv run:*)",
       "Bash(cat:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "WebFetch(domain:agentfactory.panaversity.org)"
     ]
   }
 }

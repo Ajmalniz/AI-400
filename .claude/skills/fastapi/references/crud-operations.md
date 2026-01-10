@@ -345,6 +345,68 @@ Implement it. Test with invalid transitions. Then compare with AI:
 
 > "I implemented task status workflow validation like this: [paste your code]. I put the logic in [model/endpoint] because [your reasoning]. Would a state machine pattern be cleaner?"
 
+## Database Persistence
+
+The CRUD examples above use in-memory lists for simplicity. **This is for learning only—data is lost when the server restarts.**
+
+For production APIs, use a database for persistent storage:
+
+**In-memory (learning):**
+
+```python
+# ❌ Data lost on restart!
+tasks = []
+
+@app.post("/tasks")
+def create_task(task: TaskCreate):
+    new_task = {"id": len(tasks) + 1, "title": task.title, "status": "pending"}
+    tasks.append(new_task)
+    return new_task
+```
+
+**Database (production):**
+
+```python
+# ✅ Data persisted to PostgreSQL
+from sqlmodel import Session, select
+from database import get_session
+from models import Task
+
+@app.post("/tasks")
+def create_task(task: Task, session: Session = Depends(get_session)):
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+@app.get("/tasks")
+def list_tasks(
+    status: str | None = None,
+    session: Session = Depends(get_session)
+):
+    statement = select(Task)
+    if status:
+        statement = statement.where(Task.status == status)
+    tasks = session.exec(statement).all()
+    return tasks
+```
+
+**Key differences:**
+
+| Aspect | In-Memory | Database |
+|--------|-----------|----------|
+| **Persistence** | Lost on restart | Survives restarts |
+| **ID Assignment** | Manual (`len(tasks) + 1`) | Automatic (database assigns) |
+| **Lookup** | Loop through list | SQL query (indexed) |
+| **Filtering** | List comprehension | SQL WHERE clause |
+| **Concurrency** | Race conditions | Database transactions |
+
+**See [references/sqlmodel-database.md](sqlmodel-database.md) for:**
+- Converting in-memory CRUD to database CRUD
+- SQLModel setup with Neon PostgreSQL
+- Session management with dependency injection
+- Complete working examples with persistent storage
+
 ## Common Mistakes
 
 **Mistake 1: Not returning the updated resource**
